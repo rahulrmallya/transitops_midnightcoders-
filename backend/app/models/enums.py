@@ -12,7 +12,7 @@ class DriverStatus(str, Enum):
     AVAILABLE = "AVAILABLE"
     ON_TRIP = "ON_TRIP"
     OFF_DUTY = "OFF_DUTY"
-    SUSPENDED = "SUSPENDED"
+    INACTIVE = "INACTIVE"
 
 
 class TripStatus(str, Enum):

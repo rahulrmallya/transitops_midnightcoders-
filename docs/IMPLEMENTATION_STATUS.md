@@ -21,6 +21,8 @@
 - [x] Login
 - [x] JWT Middleware
 - [x] RBAC
+- [x] Driver CRUD
+- [x] Driver Validation
 
 ## Pending
 
