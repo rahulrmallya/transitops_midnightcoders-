@@ -14,10 +14,10 @@ class TripCreate(BaseModel):
     planned_distance: float = Field(gt=0)
     actual_distance: float | None = Field(default=None, ge=0)
     fuel_consumed: float | None = Field(default=None, ge=0)
-    revenue: float = Field(ge=0)
+    revenue: float = Field(default=0, ge=0)
     vehicle_id: int
     driver_id: int
-    status: TripStatus
+    status: TripStatus | None = None
 
 
 class TripUpdate(BaseModel):
@@ -32,6 +32,12 @@ class TripUpdate(BaseModel):
     vehicle_id: int | None = None
     driver_id: int | None = None
     status: TripStatus | None = None
+
+
+class TripComplete(BaseModel):
+    actual_distance: float = Field(gt=0)
+    fuel_consumed: float = Field(ge=0)
+    revenue: float = Field(ge=0)
 
 
 class TripResponse(BaseModel):

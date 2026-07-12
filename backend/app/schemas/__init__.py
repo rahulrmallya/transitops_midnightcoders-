@@ -10,7 +10,7 @@ from app.schemas.maintenance import (
     MaintenanceLogUpdate,
 )
 from app.schemas.role import RoleCreate, RoleResponse, RoleUpdate
-from app.schemas.trip import TripCreate, TripResponse, TripUpdate
+from app.schemas.trip import TripComplete, TripCreate, TripResponse, TripUpdate
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.schemas.vehicle import VehicleCreate, VehicleResponse, VehicleUpdate
 
@@ -37,6 +37,7 @@ __all__ = [
     "RoleUpdate",
     "SuccessResponse",
     "TokenResponse",
+    "TripComplete",
     "TripCreate",
     "TripResponse",
     "TripUpdate",
