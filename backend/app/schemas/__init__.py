@@ -1,4 +1,3 @@
-
 from app.schemas.common import ErrorResponse, PaginationResponse, SuccessResponse
 from app.schemas.auth import AuthUserResponse, LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.driver import DriverCreate, DriverResponse, DriverUpdate

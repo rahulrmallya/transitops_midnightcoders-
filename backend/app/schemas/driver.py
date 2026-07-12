@@ -1,4 +1,3 @@
-
 from datetime import date, datetime
 import re
 
@@ -34,6 +33,21 @@ class DriverBase(BaseModel):
 
 
 class DriverCreate(DriverBase):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        json_schema_extra={
+            "example": {
+                "name": "Sanjay Patil",
+                "license_number": "TO-DL-00001",
+                "license_category": "HMV",
+                "license_expiry_date": "2027-09-05",
+                "contact_number": "+919870011000",
+                "safety_score": 92,
+                "status": "AVAILABLE",
+            }
+        },
+    )
+
     name: str = Field(min_length=1, max_length=255)
     license_number: str = Field(min_length=1, max_length=100)
     license_category: str = Field(min_length=1, max_length=50)
@@ -44,6 +58,17 @@ class DriverCreate(DriverBase):
 
 
 class DriverUpdate(DriverBase):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        json_schema_extra={
+            "example": {
+                "contact_number": "+919870011001",
+                "safety_score": 94,
+                "status": "AVAILABLE",
+            }
+        },
+    )
+
     name: str | None = Field(default=None, min_length=1, max_length=255)
     license_number: str | None = Field(default=None, min_length=1, max_length=100)
     license_category: str | None = Field(default=None, min_length=1, max_length=50)
@@ -54,7 +79,23 @@ class DriverUpdate(DriverBase):
 
 
 class DriverResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 1,
+                "name": "Sanjay Patil",
+                "license_number": "TO-DL-00001",
+                "license_category": "HMV",
+                "license_expiry_date": "2027-09-05",
+                "contact_number": "+919870011000",
+                "safety_score": 92,
+                "status": "AVAILABLE",
+                "created_at": "2026-07-12T09:30:00Z",
+                "updated_at": "2026-07-12T09:30:00Z",
+            }
+        },
+    )
 
     id: int
     name: str
@@ -69,6 +110,17 @@ class DriverResponse(BaseModel):
 
 
 class DriverListResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "total": 20,
+                "page": 1,
+                "limit": 10,
+                "items": [],
+            }
+        }
+    )
+
     total: int = Field(ge=0)
     page: int = Field(ge=1)
     limit: int = Field(ge=1)

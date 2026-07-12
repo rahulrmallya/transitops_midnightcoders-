@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_roles
@@ -25,7 +25,7 @@ EXPENSE_RESPONSES = {
     status.HTTP_401_UNAUTHORIZED: {"description": "Authentication required."},
     status.HTTP_403_FORBIDDEN: {"description": "Insufficient role permissions."},
     status.HTTP_404_NOT_FOUND: {"description": "Expense or vehicle not found."},
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Validation error."},
+    status.HTTP_422_UNPROCESSABLE_CONTENT: {"description": "Validation error."},
 }
 
 
@@ -47,18 +47,38 @@ def _handle_expense_service_error(exc: Exception) -> None:
     "",
     response_model=SuccessResponse[dict[str, Any]],
     summary="List expenses",
-    description="Returns paginated expenses with optional vehicle and type filtering.",
+    description=(
+        "Returns paginated operating expenses with vehicle and category filters "
+        "for cost review."
+    ),
     responses=EXPENSE_RESPONSES,
 )
 def get_expenses(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*EXPENSE_ROLES))],
-    vehicle_id: int | None = None,
-    expense_type: str | None = None,
-    sort_by: str = "created_at",
-    sort_order: str = "desc",
-    page: int = 1,
-    limit: int = 10,
+    vehicle_id: Annotated[
+        int | None,
+        Query(gt=0, description="Filter expenses for a specific vehicle."),
+    ] = None,
+    expense_type: Annotated[
+        str | None,
+        Query(
+            description="Filter by expense category such as Toll, Permit, or Parking.",
+        ),
+    ] = None,
+    sort_by: Annotated[
+        str,
+        Query(description="Sort field supported by the expense service."),
+    ] = "created_at",
+    sort_order: Annotated[
+        str,
+        Query(description="Sort direction: asc or desc."),
+    ] = "desc",
+    page: Annotated[int, Query(ge=1, description="One-based page number.")] = 1,
+    limit: Annotated[
+        int,
+        Query(ge=1, description="Maximum records to return per page."),
+    ] = 10,
 ) -> SuccessResponse[dict[str, Any]]:
     service = ExpenseService(db)
     try:
@@ -80,11 +100,14 @@ def get_expenses(
     "/{expense_id}",
     response_model=SuccessResponse[ExpenseResponse],
     summary="Get expense",
-    description="Returns one expense by ID.",
+    description=(
+        "Returns a single expense record with category, amount, date, and "
+        "vehicle reference."
+    ),
     responses=EXPENSE_RESPONSES,
 )
 def get_expense(
-    expense_id: int,
+    expense_id: Annotated[int, Path(gt=0, description="Unique expense identifier.")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*EXPENSE_ROLES))],
 ) -> SuccessResponse[ExpenseResponse]:
@@ -105,7 +128,7 @@ def get_expense(
     response_model=SuccessResponse[ExpenseResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create expense",
-    description="Creates an expense record for an existing vehicle.",
+    description="Creates an operating expense for an existing vehicle.",
     responses=EXPENSE_RESPONSES,
 )
 def create_expense(
@@ -129,11 +152,11 @@ def create_expense(
     "/{expense_id}",
     response_model=SuccessResponse[ExpenseResponse],
     summary="Update expense",
-    description="Updates an existing expense record.",
+    description="Updates an existing operating expense record.",
     responses=EXPENSE_RESPONSES,
 )
 def update_expense(
-    expense_id: int,
+    expense_id: Annotated[int, Path(gt=0, description="Unique expense identifier.")],
     payload: ExpenseUpdate,
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*EXPENSE_ROLES))],
@@ -154,11 +177,11 @@ def update_expense(
     "/{expense_id}",
     response_model=SuccessResponse[dict[str, Any]],
     summary="Delete expense",
-    description="Deletes an expense record.",
+    description="Deletes an expense record when no longer needed for cost tracking.",
     responses=EXPENSE_RESPONSES,
 )
 def delete_expense(
-    expense_id: int,
+    expense_id: Annotated[int, Path(gt=0, description="Unique expense identifier.")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*EXPENSE_ROLES))],
 ) -> SuccessResponse[dict[str, Any]]:

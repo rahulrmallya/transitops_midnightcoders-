@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_roles
@@ -27,7 +27,7 @@ MAINTENANCE_RESPONSES = {
     status.HTTP_403_FORBIDDEN: {"description": "Insufficient role permissions."},
     status.HTTP_404_NOT_FOUND: {"description": "Maintenance record or vehicle not found."},
     status.HTTP_409_CONFLICT: {"description": "Maintenance state conflict."},
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Validation error."},
+    status.HTTP_422_UNPROCESSABLE_CONTENT: {"description": "Validation error."},
 }
 
 
@@ -54,18 +54,39 @@ def _handle_maintenance_service_error(exc: Exception) -> None:
     "",
     response_model=SuccessResponse[dict[str, Any]],
     summary="List maintenance records",
-    description="Returns paginated maintenance records with optional filters and sorting.",
+    description=(
+        "Returns paginated maintenance records for fleet service planning and "
+        "shop visibility."
+    ),
     responses=MAINTENANCE_RESPONSES,
 )
 def get_maintenance_records(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles("Fleet Manager"))],
-    vehicle_id: int | None = None,
-    status_filter: Annotated[str | None, Query(alias="status")] = None,
-    sort_by: str = "created_at",
-    sort_order: str = "desc",
-    page: int = 1,
-    limit: int = 10,
+    vehicle_id: Annotated[
+        int | None,
+        Query(gt=0, description="Filter maintenance records for a specific vehicle."),
+    ] = None,
+    status_filter: Annotated[
+        str | None,
+        Query(
+            alias="status",
+            description="Filter by maintenance status, such as OPEN or CLOSED.",
+        ),
+    ] = None,
+    sort_by: Annotated[
+        str,
+        Query(description="Sort field supported by the maintenance service."),
+    ] = "created_at",
+    sort_order: Annotated[
+        str,
+        Query(description="Sort direction: asc or desc."),
+    ] = "desc",
+    page: Annotated[int, Query(ge=1, description="One-based page number.")] = 1,
+    limit: Annotated[
+        int,
+        Query(ge=1, description="Maximum records to return per page."),
+    ] = 10,
 ) -> SuccessResponse[dict[str, Any]]:
     service = MaintenanceService(db)
     try:
@@ -90,11 +111,14 @@ def get_maintenance_records(
     "/{maintenance_id}",
     response_model=SuccessResponse[MaintenanceLogResponse],
     summary="Get maintenance record",
-    description="Returns one maintenance record by ID.",
+    description="Returns a single maintenance record, including service dates, cost, and status.",
     responses=MAINTENANCE_RESPONSES,
 )
 def get_maintenance_record(
-    maintenance_id: int,
+    maintenance_id: Annotated[
+        int,
+        Path(gt=0, description="Unique maintenance record identifier."),
+    ],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles("Fleet Manager"))],
 ) -> SuccessResponse[MaintenanceLogResponse]:
@@ -115,7 +139,10 @@ def get_maintenance_record(
     response_model=SuccessResponse[MaintenanceLogResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create maintenance record",
-    description="Creates an open maintenance record using existing vehicle availability rules.",
+    description=(
+        "Creates a maintenance record using existing vehicle availability and "
+        "service rules."
+    ),
     responses=MAINTENANCE_RESPONSES,
 )
 def create_maintenance_record(
@@ -144,11 +171,17 @@ def create_maintenance_record(
     "/{maintenance_id}/close",
     response_model=SuccessResponse[MaintenanceLogResponse],
     summary="Close maintenance record",
-    description="Closes an open maintenance record and releases the vehicle when allowed.",
+    description=(
+        "Closes an open maintenance record and releases the vehicle when "
+        "allowed by service rules."
+    ),
     responses=MAINTENANCE_RESPONSES,
 )
 def close_maintenance(
-    maintenance_id: int,
+    maintenance_id: Annotated[
+        int,
+        Path(gt=0, description="Unique maintenance record identifier."),
+    ],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles("Fleet Manager"))],
 ) -> SuccessResponse[MaintenanceLogResponse]:

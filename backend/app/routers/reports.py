@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_roles
@@ -41,15 +41,24 @@ def _handle_report_service_error(exc: Exception) -> None:
     "/dashboard",
     response_model=SuccessResponse[dict[str, Any]],
     summary="Get dashboard report",
-    description="Returns high-level operational metrics for dashboards.",
+    description="Returns high-level operational metrics for executive and dispatcher dashboards.",
     responses=REPORT_RESPONSES,
 )
 def get_dashboard_report(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*REPORT_ROLES))],
-    vehicle_id: int | None = None,
-    date_from: date | None = None,
-    date_to: date | None = None,
+    vehicle_id: Annotated[
+        int | None,
+        Query(gt=0, description="Limit dashboard metrics to one vehicle."),
+    ] = None,
+    date_from: Annotated[
+        date | None,
+        Query(description="Inclusive reporting start date."),
+    ] = None,
+    date_to: Annotated[
+        date | None,
+        Query(description="Inclusive reporting end date."),
+    ] = None,
 ) -> SuccessResponse[dict[str, Any]]:
     service = ReportService(db)
     try:
@@ -68,15 +77,24 @@ def get_dashboard_report(
     "/fleet",
     response_model=SuccessResponse[dict[str, Any]],
     summary="Get fleet report",
-    description="Returns fleet utilization and distance metrics.",
+    description="Returns fleet utilization, distance, and operational status metrics.",
     responses=REPORT_RESPONSES,
 )
 def get_fleet_report(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*REPORT_ROLES))],
-    vehicle_id: int | None = None,
-    date_from: date | None = None,
-    date_to: date | None = None,
+    vehicle_id: Annotated[
+        int | None,
+        Query(gt=0, description="Limit fleet metrics to one vehicle."),
+    ] = None,
+    date_from: Annotated[
+        date | None,
+        Query(description="Inclusive reporting start date."),
+    ] = None,
+    date_to: Annotated[
+        date | None,
+        Query(description="Inclusive reporting end date."),
+    ] = None,
 ) -> SuccessResponse[dict[str, Any]]:
     service = ReportService(db)
     try:
@@ -95,15 +113,24 @@ def get_fleet_report(
     "/cost",
     response_model=SuccessResponse[dict[str, Any]],
     summary="Get cost report",
-    description="Returns cost, revenue, and ROI metrics.",
+    description="Returns cost, revenue, expense, fuel, and ROI metrics for financial review.",
     responses=REPORT_RESPONSES,
 )
 def get_cost_report(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*REPORT_ROLES))],
-    vehicle_id: int | None = None,
-    date_from: date | None = None,
-    date_to: date | None = None,
+    vehicle_id: Annotated[
+        int | None,
+        Query(gt=0, description="Limit cost metrics to one vehicle."),
+    ] = None,
+    date_from: Annotated[
+        date | None,
+        Query(description="Inclusive reporting start date."),
+    ] = None,
+    date_to: Annotated[
+        date | None,
+        Query(description="Inclusive reporting end date."),
+    ] = None,
 ) -> SuccessResponse[dict[str, Any]]:
     service = ReportService(db)
     try:

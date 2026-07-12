@@ -37,8 +37,12 @@ class VehicleService:
 
         vehicle = Vehicle(**payload.model_dump())
         self.db.add(vehicle)
-        self.db.commit()
-        self.db.refresh(vehicle)
+        try:
+            self.db.commit()
+            self.db.refresh(vehicle)
+        except Exception:
+            self.db.rollback()
+            raise
         return vehicle
 
     def get_vehicle_by_id(self, vehicle_id: int) -> Vehicle:
@@ -117,14 +121,22 @@ class VehicleService:
         for field, value in update_data.items():
             setattr(vehicle, field, value)
 
-        self.db.commit()
-        self.db.refresh(vehicle)
+        try:
+            self.db.commit()
+            self.db.refresh(vehicle)
+        except Exception:
+            self.db.rollback()
+            raise
         return vehicle
 
     def delete_vehicle(self, vehicle_id: int) -> None:
         vehicle = self.get_vehicle_by_id(vehicle_id)
         self.db.delete(vehicle)
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
 
     def _ensure_registration_number_unique(
         self,

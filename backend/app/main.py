@@ -16,17 +16,61 @@ configure_logging()
 app = FastAPI(
     title="TransitOps API",
     version="1.0.0",
-    description="Enterprise Transport Operations Platform Backend",
+    description=(
+        "TransitOps is an enterprise transport operations API for managing fleet "
+        "assets, drivers, trips, maintenance, fuel usage, expenses, and executive "
+        "reporting. All endpoints use the standard SuccessResponse/ErrorResponse "
+        "contract and are protected by JWT authentication where required."
+    ),
     openapi_tags=[
         {"name": "System", "description": "API health and platform status endpoints."},
-        {"name": "Authentication", "description": "User registration, login, and profile endpoints."},
-        {"name": "Vehicles", "description": "Vehicle inventory and lifecycle management endpoints."},
-        {"name": "Drivers", "description": "Driver profile and availability management endpoints."},
-        {"name": "Trips", "description": "Trip planning and operational status endpoints."},
-        {"name": "Maintenance", "description": "Vehicle maintenance record endpoints."},
-        {"name": "Fuel", "description": "Fuel usage tracking endpoints."},
-        {"name": "Expenses", "description": "Vehicle expense tracking endpoints."},
-        {"name": "Reports", "description": "Dashboard, fleet, and cost reporting endpoints."},
+        {
+            "name": "Authentication",
+            "description": (
+                "JWT login, registration, and authenticated profile endpoints."
+            ),
+        },
+        {
+            "name": "Vehicles",
+            "description": (
+                "Vehicle inventory, lifecycle state, capacity, and odometer "
+                "endpoints."
+            ),
+        },
+        {
+            "name": "Drivers",
+            "description": (
+                "Driver profiles, licensing, safety score, and availability "
+                "endpoints."
+            ),
+        },
+        {
+            "name": "Trips",
+            "description": (
+                "Core dispatch workflow for draft, dispatched, completed, and "
+                "cancelled trips."
+            ),
+        },
+        {
+            "name": "Maintenance",
+            "description": (
+                "Vehicle maintenance intake, tracking, and closure endpoints."
+            ),
+        },
+        {
+            "name": "Fuel",
+            "description": "Fuel purchase and consumption tracking endpoints.",
+        },
+        {
+            "name": "Expenses",
+            "description": "Operational expense capture and management endpoints.",
+        },
+        {
+            "name": "Reports",
+            "description": (
+                "Dashboard, fleet utilization, and cost reporting endpoints."
+            ),
+        },
     ],
 )
 

@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_active_user, require_roles
@@ -27,7 +27,7 @@ DRIVER_RESPONSES = {
     status.HTTP_403_FORBIDDEN: {"description": "Insufficient role permissions."},
     status.HTTP_404_NOT_FOUND: {"description": "Driver not found."},
     status.HTTP_409_CONFLICT: {"description": "Driver conflict."},
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Validation error."},
+    status.HTTP_422_UNPROCESSABLE_CONTENT: {"description": "Validation error."},
 }
 
 
@@ -54,19 +54,48 @@ def _handle_driver_service_error(exc: Exception) -> None:
     "",
     response_model=SuccessResponse[dict[str, Any]],
     summary="List drivers",
-    description="Returns paginated drivers with optional filters and sorting.",
+    description=(
+        "Returns a paginated driver roster with licensing, safety score, and "
+        "availability filters for dispatch planning."
+    ),
     responses=DRIVER_RESPONSES,
 )
 def get_drivers(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(get_current_active_user)],
-    status_filter: Annotated[DriverStatus | None, Query(alias="status")] = None,
-    license_category: str | None = None,
-    search: str | None = None,
-    sort_by: str = "created_at",
-    sort_order: str = "desc",
-    page: int = 1,
-    limit: int = 10,
+    status_filter: Annotated[
+        DriverStatus | None,
+        Query(
+            alias="status",
+            description="Filter drivers by availability or employment status.",
+        ),
+    ] = None,
+    license_category: Annotated[
+        str | None,
+        Query(description="Filter by license category such as HMV, LMV, or HAZMAT."),
+    ] = None,
+    search: Annotated[
+        str | None,
+        Query(description="Search driver name or license number."),
+    ] = None,
+    sort_by: Annotated[
+        str,
+        Query(
+            description=(
+                "Sort field: name, license_expiry_date, safety_score, or "
+                "created_at."
+            ),
+        ),
+    ] = "created_at",
+    sort_order: Annotated[
+        str,
+        Query(description="Sort direction: asc or desc."),
+    ] = "desc",
+    page: Annotated[int, Query(ge=1, description="One-based page number.")] = 1,
+    limit: Annotated[
+        int,
+        Query(ge=1, description="Maximum records to return per page."),
+    ] = 10,
 ) -> SuccessResponse[dict[str, Any]]:
     service = DriverService(db)
     try:
@@ -89,11 +118,14 @@ def get_drivers(
     "/{driver_id}",
     response_model=SuccessResponse[DriverResponse],
     summary="Get driver",
-    description="Returns one driver by ID.",
+    description=(
+        "Returns a single driver profile, including license, safety score, and "
+        "current status."
+    ),
     responses=DRIVER_RESPONSES,
 )
 def get_driver(
-    driver_id: int,
+    driver_id: Annotated[int, Path(gt=0, description="Unique driver identifier.")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(get_current_active_user)],
 ) -> SuccessResponse[DriverResponse]:
@@ -114,7 +146,10 @@ def get_driver(
     response_model=SuccessResponse[DriverResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create driver",
-    description="Creates a driver record for fleet operations.",
+    description=(
+        "Creates a driver profile for fleet operations. Requires Fleet Manager "
+        "or Safety Officer access."
+    ),
     responses=DRIVER_RESPONSES,
 )
 def create_driver(
@@ -142,11 +177,11 @@ def create_driver(
     "/{driver_id}",
     response_model=SuccessResponse[DriverResponse],
     summary="Update driver",
-    description="Updates an existing driver record.",
+    description="Updates driver contact, licensing, safety score, or availability details.",
     responses=DRIVER_RESPONSES,
 )
 def update_driver(
-    driver_id: int,
+    driver_id: Annotated[int, Path(gt=0, description="Unique driver identifier.")],
     payload: DriverUpdate,
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[
@@ -171,11 +206,11 @@ def update_driver(
     "/{driver_id}",
     response_model=SuccessResponse[dict[str, Any]],
     summary="Delete driver",
-    description="Deletes a driver record when allowed by existing rules.",
+    description="Deletes a driver record when allowed by existing driver management rules.",
     responses=DRIVER_RESPONSES,
 )
 def delete_driver(
-    driver_id: int,
+    driver_id: Annotated[int, Path(gt=0, description="Unique driver identifier.")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles("Fleet Manager"))],
 ) -> SuccessResponse[dict[str, Any]]:

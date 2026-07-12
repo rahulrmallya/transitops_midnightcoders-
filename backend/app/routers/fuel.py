@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_roles
@@ -25,7 +25,7 @@ FUEL_RESPONSES = {
     status.HTTP_401_UNAUTHORIZED: {"description": "Authentication required."},
     status.HTTP_403_FORBIDDEN: {"description": "Insufficient role permissions."},
     status.HTTP_404_NOT_FOUND: {"description": "Fuel log or vehicle not found."},
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Validation error."},
+    status.HTTP_422_UNPROCESSABLE_CONTENT: {"description": "Validation error."},
 }
 
 
@@ -47,17 +47,29 @@ def _handle_fuel_service_error(exc: Exception) -> None:
     "",
     response_model=SuccessResponse[dict[str, Any]],
     summary="List fuel logs",
-    description="Returns paginated fuel logs with optional vehicle filtering.",
+    description="Returns paginated fuel logs for tracking vehicle consumption and operating cost.",
     responses=FUEL_RESPONSES,
 )
 def get_fuel_logs(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*FUEL_ROLES))],
-    vehicle_id: int | None = None,
-    sort_by: str = "created_at",
-    sort_order: str = "desc",
-    page: int = 1,
-    limit: int = 10,
+    vehicle_id: Annotated[
+        int | None,
+        Query(gt=0, description="Filter fuel logs for a specific vehicle."),
+    ] = None,
+    sort_by: Annotated[
+        str,
+        Query(description="Sort field supported by the fuel service."),
+    ] = "created_at",
+    sort_order: Annotated[
+        str,
+        Query(description="Sort direction: asc or desc."),
+    ] = "desc",
+    page: Annotated[int, Query(ge=1, description="One-based page number.")] = 1,
+    limit: Annotated[
+        int,
+        Query(ge=1, description="Maximum records to return per page."),
+    ] = 10,
 ) -> SuccessResponse[dict[str, Any]]:
     service = FuelService(db)
     try:
@@ -78,11 +90,14 @@ def get_fuel_logs(
     "/{fuel_log_id}",
     response_model=SuccessResponse[FuelLogResponse],
     summary="Get fuel log",
-    description="Returns one fuel log by ID.",
+    description="Returns a single fuel log with vehicle, quantity, total cost, and fuel date.",
     responses=FUEL_RESPONSES,
 )
 def get_fuel_log(
-    fuel_log_id: int,
+    fuel_log_id: Annotated[
+        int,
+        Path(gt=0, description="Unique fuel log identifier."),
+    ],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*FUEL_ROLES))],
 ) -> SuccessResponse[FuelLogResponse]:
@@ -103,7 +118,10 @@ def get_fuel_log(
     response_model=SuccessResponse[FuelLogResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create fuel log",
-    description="Creates a fuel log for an existing vehicle.",
+    description=(
+        "Creates a fuel log for an existing vehicle. Requires Fleet Manager or "
+        "Dispatcher access."
+    ),
     responses=FUEL_RESPONSES,
 )
 def create_fuel_log(

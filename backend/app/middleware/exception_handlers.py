@@ -45,7 +45,7 @@ def request_validation_exception_handler(
         request.url.path,
     )
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content=jsonable_encoder(
             ErrorResponse(
                 message="Validation error",
@@ -62,7 +62,7 @@ def validation_exception_handler(request: Request, exc: ValidationError) -> JSON
         request.url.path,
     )
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content=jsonable_encoder(
             ErrorResponse(
                 message="Validation error",

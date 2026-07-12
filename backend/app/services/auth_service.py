@@ -38,8 +38,12 @@ class AuthService:
         )
 
         self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
+        try:
+            self.db.commit()
+            self.db.refresh(user)
+        except Exception:
+            self.db.rollback()
+            raise
         return user
 
     def authenticate_user(self, payload: LoginRequest) -> TokenResponse | None:

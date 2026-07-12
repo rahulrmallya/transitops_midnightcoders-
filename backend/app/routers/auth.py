@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
     responses={
         status.HTTP_201_CREATED: {"description": "Registration successful."},
         status.HTTP_400_BAD_REQUEST: {"description": "Invalid registration request."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"description": "Validation error."},
     },
 )
 def register(
@@ -56,7 +56,7 @@ def register(
     responses={
         status.HTTP_200_OK: {"description": "Login successful."},
         status.HTTP_401_UNAUTHORIZED: {"description": "Invalid credentials."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"description": "Validation error."},
     },
 )
 def login(

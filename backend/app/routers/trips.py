@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_active_user, require_roles
@@ -32,7 +32,7 @@ TRIP_RESPONSES = {
     status.HTTP_403_FORBIDDEN: {"description": "Insufficient role permissions."},
     status.HTTP_404_NOT_FOUND: {"description": "Trip, vehicle, or driver not found."},
     status.HTTP_409_CONFLICT: {"description": "Trip state conflict."},
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Validation error."},
+    status.HTTP_422_UNPROCESSABLE_CONTENT: {"description": "Validation error."},
 }
 
 
@@ -59,20 +59,44 @@ def _handle_trip_service_error(exc: Exception) -> None:
     "",
     response_model=SuccessResponse[dict[str, Any]],
     summary="List trips",
-    description="Returns paginated trips with optional filters and sorting.",
+    description=(
+        "Returns paginated trips across the operational lifecycle. Filter by "
+        "status, assigned vehicle, assigned driver, or search lane and trip code."
+    ),
     responses=TRIP_RESPONSES,
 )
 def get_trips(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(get_current_active_user)],
-    status_filter: Annotated[TripStatus | None, Query(alias="status")] = None,
-    vehicle_id: int | None = None,
-    driver_id: int | None = None,
-    search: str | None = None,
-    sort_by: str = "created_at",
-    sort_order: str = "desc",
-    page: int = 1,
-    limit: int = 10,
+    status_filter: Annotated[
+        TripStatus | None,
+        Query(alias="status", description="Filter trips by lifecycle status."),
+    ] = None,
+    vehicle_id: Annotated[
+        int | None,
+        Query(gt=0, description="Filter trips assigned to a specific vehicle."),
+    ] = None,
+    driver_id: Annotated[
+        int | None,
+        Query(gt=0, description="Filter trips assigned to a specific driver."),
+    ] = None,
+    search: Annotated[
+        str | None,
+        Query(description="Search by trip code, source, or destination."),
+    ] = None,
+    sort_by: Annotated[
+        str,
+        Query(description="Sort field: trip_code, source, destination, or created_at."),
+    ] = "created_at",
+    sort_order: Annotated[
+        str,
+        Query(description="Sort direction: asc or desc."),
+    ] = "desc",
+    page: Annotated[int, Query(ge=1, description="One-based page number.")] = 1,
+    limit: Annotated[
+        int,
+        Query(ge=1, description="Maximum records to return per page."),
+    ] = 10,
 ) -> SuccessResponse[dict[str, Any]]:
     service = TripService(db)
     try:
@@ -96,11 +120,14 @@ def get_trips(
     "/{trip_id}",
     response_model=SuccessResponse[TripResponse],
     summary="Get trip",
-    description="Returns one trip by ID.",
+    description=(
+        "Returns a single trip with planned metrics, actual completion metrics, "
+        "assignments, and status."
+    ),
     responses=TRIP_RESPONSES,
 )
 def get_trip(
-    trip_id: int,
+    trip_id: Annotated[int, Path(gt=0, description="Unique trip identifier.")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(get_current_active_user)],
 ) -> SuccessResponse[TripResponse]:
@@ -121,7 +148,10 @@ def get_trip(
     response_model=SuccessResponse[TripResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create trip",
-    description="Creates a draft trip using existing trip validation rules.",
+    description=(
+        "Creates a draft trip. Dispatch validations are applied later when the "
+        "dispatch endpoint is called."
+    ),
     responses=TRIP_RESPONSES,
 )
 def create_trip(
@@ -145,11 +175,14 @@ def create_trip(
     "/{trip_id}",
     response_model=SuccessResponse[TripResponse],
     summary="Update draft trip",
-    description="Updates an existing draft trip.",
+    description=(
+        "Updates an existing draft trip. Trips that have already been "
+        "dispatched cannot be edited here."
+    ),
     responses=TRIP_RESPONSES,
 )
 def update_trip(
-    trip_id: int,
+    trip_id: Annotated[int, Path(gt=0, description="Unique trip identifier.")],
     payload: TripUpdate,
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*TRIP_MANAGEMENT_ROLES))],
@@ -170,11 +203,11 @@ def update_trip(
     "/{trip_id}",
     response_model=SuccessResponse[dict[str, Any]],
     summary="Delete draft trip",
-    description="Deletes an existing draft trip.",
+    description="Deletes an existing draft trip before it enters dispatch operations.",
     responses=TRIP_RESPONSES,
 )
 def delete_trip(
-    trip_id: int,
+    trip_id: Annotated[int, Path(gt=0, description="Unique trip identifier.")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*TRIP_MANAGEMENT_ROLES))],
 ) -> SuccessResponse[dict[str, Any]]:
@@ -191,11 +224,15 @@ def delete_trip(
     "/{trip_id}/dispatch",
     response_model=SuccessResponse[TripResponse],
     summary="Dispatch trip",
-    description="Marks a draft trip as dispatched using existing dispatch rules.",
+    description=(
+        "Dispatches a draft trip after validating vehicle availability, driver "
+        "availability, active license, and cargo capacity. Vehicle and driver "
+        "statuses move to ON_TRIP in the same transaction."
+    ),
     responses=TRIP_RESPONSES,
 )
 def dispatch_trip(
-    trip_id: int,
+    trip_id: Annotated[int, Path(gt=0, description="Unique trip identifier.")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*TRIP_MANAGEMENT_ROLES))],
 ) -> SuccessResponse[TripResponse]:
@@ -216,11 +253,15 @@ def dispatch_trip(
     "/{trip_id}/complete",
     response_model=SuccessResponse[TripResponse],
     summary="Complete trip",
-    description="Marks a dispatched trip as completed using existing completion rules.",
+    description=(
+        "Completes a dispatched trip with actual distance, fuel consumed, and "
+        "revenue. Vehicle and driver are released to AVAILABLE and the vehicle "
+        "odometer is incremented."
+    ),
     responses=TRIP_RESPONSES,
 )
 def complete_trip(
-    trip_id: int,
+    trip_id: Annotated[int, Path(gt=0, description="Unique trip identifier.")],
     payload: TripComplete,
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*TRIP_MANAGEMENT_ROLES))],
@@ -242,11 +283,14 @@ def complete_trip(
     "/{trip_id}/cancel",
     response_model=SuccessResponse[TripResponse],
     summary="Cancel trip",
-    description="Marks a dispatched trip as cancelled using existing cancellation rules.",
+    description=(
+        "Cancels a dispatched trip and restores the assigned vehicle and "
+        "driver to AVAILABLE."
+    ),
     responses=TRIP_RESPONSES,
 )
 def cancel_trip(
-    trip_id: int,
+    trip_id: Annotated[int, Path(gt=0, description="Unique trip identifier.")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(*TRIP_MANAGEMENT_ROLES))],
 ) -> SuccessResponse[TripResponse]:

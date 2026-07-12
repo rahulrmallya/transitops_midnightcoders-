@@ -61,8 +61,12 @@ class TripService:
 
         trip = Trip(**data)
         self.db.add(trip)
-        self.db.commit()
-        self.db.refresh(trip)
+        try:
+            self.db.commit()
+            self.db.refresh(trip)
+        except Exception:
+            self.db.rollback()
+            raise
         return trip
 
     def get_trip_by_id(self, trip_id: int) -> Trip:
@@ -157,8 +161,12 @@ class TripService:
         for field, value in update_data.items():
             setattr(trip, field, value)
 
-        self.db.commit()
-        self.db.refresh(trip)
+        try:
+            self.db.commit()
+            self.db.refresh(trip)
+        except Exception:
+            self.db.rollback()
+            raise
         return trip
 
     def delete_draft_trip(self, trip_id: int) -> None:
@@ -167,7 +175,11 @@ class TripService:
             raise TripConflictError("Only draft trips can be deleted")
 
         self.db.delete(trip)
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
 
     def dispatch_trip(self, trip_id: int) -> Trip:
         trip = self.get_trip_by_id(trip_id)

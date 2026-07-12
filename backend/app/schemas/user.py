@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -7,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class UserCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=255)
     email: str = Field(min_length=1, max_length=255)
-    password: str = Field(min_length=1)
+    password: str = Field(min_length=8)
     role_id: int
     is_active: bool = True
 
@@ -15,7 +14,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     email: str | None = Field(default=None, min_length=1, max_length=255)
-    password: str | None = Field(default=None, min_length=1)
+    password: str | None = Field(default=None, min_length=8)
     role_id: int | None = None
     is_active: bool | None = None
 

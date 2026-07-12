@@ -58,7 +58,7 @@ Populate development data:
 python scripts/seed_data.py
 ```
 
-The seed script creates roles, users, 15 vehicles, 20 drivers, 20 trips, 10 maintenance records, 25 fuel logs, and 20 expenses. It uses stable identifiers so repeated runs do not create duplicate seed records.
+The seed script creates 4 roles, 4 users, 15 vehicles, 20 drivers, 25 trips, 10 maintenance records, 30 fuel logs, and 20 expenses. It uses stable identifiers so repeated runs do not create duplicate seed records.
 
 Default seeded user password:
 
