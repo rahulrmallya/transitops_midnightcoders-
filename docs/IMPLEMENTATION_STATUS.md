@@ -17,6 +17,10 @@
 - [x] User Model
 - [x] Role Model
 - [x] Schemas
+- [x] Register
+- [x] Login
+- [x] JWT Middleware
+- [x] RBAC
 
 ## Pending
 

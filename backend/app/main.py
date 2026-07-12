@@ -1,7 +1,11 @@
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.routers import auth, drivers, expenses, fuel, maintenance, reports, trips, vehicles
+from app.schemas.common import ErrorResponse
 
 
 app = FastAPI(
@@ -17,6 +21,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(HTTPException)
+def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
+    message = exc.detail if isinstance(exc.detail, str) else "Request failed"
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(message=message, errors={}).model_dump(),
+        headers=getattr(exc, "headers", None),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=jsonable_encoder(ErrorResponse(
+            message="Validation error",
+            errors={"details": exc.errors()},
+        )),
+    )
 
 api_router = APIRouter(prefix="/api/v1")
 

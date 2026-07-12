@@ -1,5 +1,6 @@
 
 from app.schemas.common import ErrorResponse, PaginationResponse, SuccessResponse
+from app.schemas.auth import AuthUserResponse, LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.driver import DriverCreate, DriverResponse, DriverUpdate
 from app.schemas.expense import ExpenseCreate, ExpenseResponse, ExpenseUpdate
 from app.schemas.fuel import FuelLogCreate, FuelLogResponse, FuelLogUpdate
@@ -18,6 +19,7 @@ __all__ = [
     "DriverResponse",
     "DriverUpdate",
     "ErrorResponse",
+    "AuthUserResponse",
     "ExpenseCreate",
     "ExpenseResponse",
     "ExpenseUpdate",
@@ -28,10 +30,13 @@ __all__ = [
     "MaintenanceLogResponse",
     "MaintenanceLogUpdate",
     "PaginationResponse",
+    "LoginRequest",
+    "RegisterRequest",
     "RoleCreate",
     "RoleResponse",
     "RoleUpdate",
     "SuccessResponse",
+    "TokenResponse",
     "TripCreate",
     "TripResponse",
     "TripUpdate",
