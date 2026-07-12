@@ -21,6 +21,7 @@
 - [x] Login
 - [x] JWT Middleware
 - [x] RBAC
+<<<<<<< HEAD
 - [x] Vehicle CRUD
 - [x] Vehicle Validation
 - [x] Driver CRUD
@@ -28,6 +29,10 @@
 - [x] Trip CRUD
 - [x] Trip Validation
 - [x] Trip Business Rules
+=======
+- [x] Driver CRUD
+- [x] Driver Validation
+>>>>>>> dc05ff8cd59cb79525c7af877cfdad74a3bcd218
 
 ## Pending
 

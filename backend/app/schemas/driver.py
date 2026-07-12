@@ -1,12 +1,39 @@
 
 from datetime import date, datetime
+import re
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import DriverStatus
 
 
-class DriverCreate(BaseModel):
+PHONE_NUMBER_PATTERN = re.compile(r"^\+?[1-9]\d{6,14}$")
+
+
+class DriverBase(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    @field_validator("contact_number", check_fields=False)
+    @classmethod
+    def validate_contact_number(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        normalized_value = re.sub(r"[\s().-]", "", value)
+        if not PHONE_NUMBER_PATTERN.fullmatch(normalized_value):
+            raise ValueError("Contact number must be a valid international phone number")
+        return normalized_value
+
+    @field_validator("license_expiry_date", check_fields=False)
+    @classmethod
+    def validate_license_expiry_date(cls, value: date | None) -> date | None:
+        if value is None:
+            return value
+        if value <= date.today():
+            raise ValueError("License expiry date must be in the future")
+        return value
+
+
+class DriverCreate(DriverBase):
     name: str = Field(min_length=1, max_length=255)
     license_number: str = Field(min_length=1, max_length=100)
     license_category: str = Field(min_length=1, max_length=50)
@@ -16,7 +43,7 @@ class DriverCreate(BaseModel):
     status: DriverStatus
 
 
-class DriverUpdate(BaseModel):
+class DriverUpdate(DriverBase):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     license_number: str | None = Field(default=None, min_length=1, max_length=100)
     license_category: str | None = Field(default=None, min_length=1, max_length=50)
@@ -39,3 +66,10 @@ class DriverResponse(BaseModel):
     status: DriverStatus
     created_at: datetime
     updated_at: datetime
+
+
+class DriverListResponse(BaseModel):
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    limit: int = Field(ge=1)
+    items: list[DriverResponse]
