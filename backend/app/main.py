@@ -1,17 +1,33 @@
-from fastapi import APIRouter, FastAPI, HTTPException, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.encoders import jsonable_encoder
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
+from app.config.logging import configure_logging
+from app.database.database import engine
+from app.middleware.exception_handlers import register_exception_handlers
 from app.routers import auth, drivers, expenses, fuel, maintenance, reports, trips, vehicles
-from app.schemas.common import ErrorResponse
+from app.schemas.common import SuccessResponse
 
+
+configure_logging()
 
 app = FastAPI(
     title="TransitOps API",
     version="1.0.0",
     description="Enterprise Transport Operations Platform Backend",
+    openapi_tags=[
+        {"name": "System", "description": "API health and platform status endpoints."},
+        {"name": "Authentication", "description": "User registration, login, and profile endpoints."},
+        {"name": "Vehicles", "description": "Vehicle inventory and lifecycle management endpoints."},
+        {"name": "Drivers", "description": "Driver profile and availability management endpoints."},
+        {"name": "Trips", "description": "Trip planning and operational status endpoints."},
+        {"name": "Maintenance", "description": "Vehicle maintenance record endpoints."},
+        {"name": "Fuel", "description": "Fuel usage tracking endpoints."},
+        {"name": "Expenses", "description": "Vehicle expense tracking endpoints."},
+        {"name": "Reports", "description": "Dashboard, fleet, and cost reporting endpoints."},
+    ],
 )
 
 app.add_middleware(
@@ -23,39 +39,39 @@ app.add_middleware(
 )
 
 
-@app.exception_handler(HTTPException)
-def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
-    message = exc.detail if isinstance(exc.detail, str) else "Request failed"
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=ErrorResponse(message=message, errors={}).model_dump(),
-        headers=getattr(exc, "headers", None),
-    )
-
-
-@app.exception_handler(RequestValidationError)
-def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content=jsonable_encoder(ErrorResponse(
-            message="Validation error",
-            errors={"details": exc.errors()},
-        )),
-    )
+register_exception_handlers(app)
 
 api_router = APIRouter(prefix="/api/v1")
 
 
-@api_router.get("/health")
-def health_check() -> dict:
-    return {
-        "success": True,
-        "message": "Backend running successfully",
-        "data": {
-            "status": "healthy",
+@api_router.get(
+    "/health",
+    tags=["System"],
+    response_model=SuccessResponse[dict],
+    summary="Check API health",
+    description="Returns API status, database connectivity, version, and current server time.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_200_OK: {"description": "API health details returned."},
+    },
+)
+def health_check() -> SuccessResponse[dict]:
+    database_status = "connected"
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        database_status = "unavailable"
+
+    return SuccessResponse(
+        message="Backend running successfully",
+        data={
+            "api_status": "healthy",
+            "database_status": database_status,
             "version": "1.0.0",
+            "current_time": datetime.now(timezone.utc).isoformat(),
         },
-    }
+    )
 
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])

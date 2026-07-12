@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from typing import Annotated
 
@@ -13,12 +14,14 @@ from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 http_bearer = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 def _require_bearer_token(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Security(http_bearer)],
 ) -> None:
     if credentials is None or credentials.scheme.lower() != "bearer":
+        logger.info("Authentication credentials missing or invalid scheme")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication credentials were not provided",
@@ -33,6 +36,7 @@ def get_current_user(
 ) -> User:
     payload = verify_access_token(token)
     if payload is None:
+        logger.info("Authentication token rejected")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired access token",
@@ -41,6 +45,7 @@ def get_current_user(
 
     user_id = payload.get("sub")
     if user_id is None:
+        logger.info("Authentication token missing subject")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid access token payload",
@@ -50,6 +55,7 @@ def get_current_user(
     try:
         user_id_int = int(user_id)
     except (TypeError, ValueError) as exc:
+        logger.info("Authentication token subject invalid")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid access token payload",
@@ -58,6 +64,7 @@ def get_current_user(
 
     user = db.scalar(select(User).where(User.id == user_id_int))
     if user is None:
+        logger.info("Authentication user lookup failed for user_id=%s", user_id_int)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Authenticated user not found",
@@ -70,6 +77,7 @@ def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     if not current_user.is_active:
+        logger.info("Authentication inactive account for user_id=%s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user account",
@@ -86,6 +94,11 @@ def require_roles(*roles: str) -> Callable[[User], User]:
     ) -> User:
         user_role = current_user.role.name if current_user.role else None
         if user_role not in allowed_roles:
+            logger.info(
+                "Authentication authorization failed for user_id=%s role=%s",
+                current_user.id,
+                user_role,
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient role permissions",

@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -17,6 +18,17 @@ from app.services.vehicle_service import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+VEHICLE_RESPONSES = {
+    status.HTTP_200_OK: {"description": "Vehicle operation completed."},
+    status.HTTP_201_CREATED: {"description": "Vehicle created."},
+    status.HTTP_400_BAD_REQUEST: {"description": "Invalid vehicle request."},
+    status.HTTP_401_UNAUTHORIZED: {"description": "Authentication required."},
+    status.HTTP_403_FORBIDDEN: {"description": "Insufficient role permissions."},
+    status.HTTP_404_NOT_FOUND: {"description": "Vehicle not found."},
+    status.HTTP_409_CONFLICT: {"description": "Vehicle conflict."},
+    status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Validation error."},
+}
 
 
 def _handle_vehicle_service_error(exc: Exception) -> None:
@@ -38,7 +50,13 @@ def _handle_vehicle_service_error(exc: Exception) -> None:
     raise exc
 
 
-@router.get("", response_model=SuccessResponse[dict[str, Any]])
+@router.get(
+    "",
+    response_model=SuccessResponse[dict[str, Any]],
+    summary="List vehicles",
+    description="Returns paginated vehicles with optional filters and sorting.",
+    responses=VEHICLE_RESPONSES,
+)
 def get_vehicles(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(get_current_active_user)],
@@ -67,7 +85,13 @@ def get_vehicles(
     return SuccessResponse(message="Vehicles retrieved", data=vehicles)
 
 
-@router.get("/{vehicle_id}", response_model=SuccessResponse[VehicleResponse])
+@router.get(
+    "/{vehicle_id}",
+    response_model=SuccessResponse[VehicleResponse],
+    summary="Get vehicle",
+    description="Returns one vehicle by ID.",
+    responses=VEHICLE_RESPONSES,
+)
 def get_vehicle(
     vehicle_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -89,6 +113,9 @@ def get_vehicle(
     "",
     response_model=SuccessResponse[VehicleResponse],
     status_code=status.HTTP_201_CREATED,
+    summary="Create vehicle",
+    description="Creates a vehicle record for fleet operations.",
+    responses=VEHICLE_RESPONSES,
 )
 def create_vehicle(
     payload: VehicleCreate,
@@ -101,13 +128,20 @@ def create_vehicle(
     except Exception as exc:
         _handle_vehicle_service_error(exc)
 
+    logger.info("Vehicle CRUD create successful for vehicle_id=%s", vehicle.id)
     return SuccessResponse(
         message="Vehicle created",
         data=VehicleResponse.model_validate(vehicle),
     )
 
 
-@router.put("/{vehicle_id}", response_model=SuccessResponse[VehicleResponse])
+@router.put(
+    "/{vehicle_id}",
+    response_model=SuccessResponse[VehicleResponse],
+    summary="Update vehicle",
+    description="Updates an existing vehicle record.",
+    responses=VEHICLE_RESPONSES,
+)
 def update_vehicle(
     vehicle_id: int,
     payload: VehicleUpdate,
@@ -120,13 +154,20 @@ def update_vehicle(
     except Exception as exc:
         _handle_vehicle_service_error(exc)
 
+    logger.info("Vehicle CRUD update successful for vehicle_id=%s", vehicle.id)
     return SuccessResponse(
         message="Vehicle updated",
         data=VehicleResponse.model_validate(vehicle),
     )
 
 
-@router.delete("/{vehicle_id}", response_model=SuccessResponse[dict[str, Any]])
+@router.delete(
+    "/{vehicle_id}",
+    response_model=SuccessResponse[dict[str, Any]],
+    summary="Delete vehicle",
+    description="Deletes a vehicle record when allowed by existing rules.",
+    responses=VEHICLE_RESPONSES,
+)
 def delete_vehicle(
     vehicle_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -138,4 +179,5 @@ def delete_vehicle(
     except Exception as exc:
         _handle_vehicle_service_error(exc)
 
+    logger.info("Vehicle CRUD delete successful for vehicle_id=%s", vehicle_id)
     return SuccessResponse(message="Vehicle deleted", data={})
