@@ -9,6 +9,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -137,7 +138,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-        <Outlet />
+        <AuthProvider>
+          <Outlet />
+        </AuthProvider>
         <Toaster />
       </ThemeProvider>
     </QueryClientProvider>

@@ -22,6 +22,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { navSections } from "./AppSidebar";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TopbarProps {
   onToggleDesktopSidebar: () => void;
@@ -43,7 +44,11 @@ function useBreadcrumbs() {
 export function Topbar({ onToggleDesktopSidebar, onOpenMobileNav }: TopbarProps) {
   const crumbs = useBreadcrumbs();
   const { theme, setTheme } = useTheme();
+  const { user, logout } = useAuth();
   const isDark = theme === "dark";
+  const userName = user?.full_name ?? "TransitOps User";
+  const userRole = user?.role ?? "Team Member";
+  const initials = getInitials(userName);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-6">
@@ -124,12 +129,12 @@ export function Topbar({ onToggleDesktopSidebar, onOpenMobileNav }: TopbarProps)
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  AV
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden text-left text-xs sm:block">
-                <span className="block font-medium text-foreground leading-tight">Arjun V.</span>
-                <span className="block text-muted-foreground leading-tight">Ops Manager</span>
+                <span className="block font-medium text-foreground leading-tight">{userName}</span>
+                <span className="block text-muted-foreground leading-tight">{userRole}</span>
               </span>
             </button>
           </DropdownMenuTrigger>
@@ -139,12 +144,22 @@ export function Topbar({ onToggleDesktopSidebar, onOpenMobileNav }: TopbarProps)
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Preferences</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/login">Sign out</Link>
+            <DropdownMenuItem onSelect={() => logout()}>
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>
   );
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }

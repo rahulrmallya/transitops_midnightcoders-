@@ -1,10 +1,22 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Truck, Mail, Lock, ArrowRight, ShieldCheck, MapPin, Activity } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, type FormEvent } from "react";
+import { AxiosError } from "axios";
+import {
+  Truck,
+  Mail,
+  Lock,
+  ArrowRight,
+  ShieldCheck,
+  MapPin,
+  Activity,
+  Loader2,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -20,8 +32,34 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading: isAuthLoading, login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (!isAuthLoading && isAuthenticated) {
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }, [isAuthenticated, isAuthLoading, navigate]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      await login({ email, password });
+    } catch (error) {
+      const message = getAuthErrorMessage(error);
+      setErrorMessage(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-[1.05fr_1fr]">
@@ -99,10 +137,7 @@ function LoginPage() {
             </p>
           </div>
 
-          <form
-            className="mt-8 space-y-5"
-            onSubmit={(e) => e.preventDefault()}
-          >
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="email">Work email</Label>
               <div className="relative">
@@ -115,6 +150,7 @@ function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -139,20 +175,33 @@ function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
 
+            {errorMessage && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {errorMessage}
+              </p>
+            )}
+
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Checkbox id="remember" />
+              <Checkbox id="remember" disabled={isSubmitting} />
               <span>Keep me signed in for 30 days</span>
             </label>
 
-            <Button asChild className="h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <Link to="/dashboard">
-                Sign in
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowRight className="mr-2 h-4 w-4" />
+              )}
+              Sign in
             </Button>
 
             <p className="text-center text-xs text-muted-foreground">
@@ -163,4 +212,23 @@ function LoginPage() {
       </div>
     </div>
   );
+}
+
+interface ApiErrorResponse {
+  message?: string;
+  errors?: {
+    details?: Array<{
+      msg?: string;
+    }>;
+  };
+}
+
+function getAuthErrorMessage(error: unknown) {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as ApiErrorResponse | undefined;
+    const validationMessage = data?.errors?.details?.[0]?.msg;
+    return validationMessage ?? data?.message ?? "Unable to sign in. Please try again.";
+  }
+
+  return "Unable to sign in. Please try again.";
 }

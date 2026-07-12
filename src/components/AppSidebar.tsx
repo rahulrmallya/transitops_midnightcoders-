@@ -12,6 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavItem {
   label: string;
@@ -62,6 +63,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed = false, onNavigate }: AppSidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { logout } = useAuth();
 
   return (
     <aside
@@ -131,17 +133,20 @@ export function AppSidebar({ collapsed = false, onNavigate }: AppSidebarProps) {
 
       {/* Logout */}
       <div className="border-t border-sidebar-border p-3">
-        <Link
-          to="/login"
-          onClick={onNavigate}
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            logout();
+          }}
           className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-white",
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-white",
             collapsed && "justify-center px-2",
           )}
         >
           <LogOut className="h-[18px] w-[18px]" />
           {!collapsed && <span>Logout</span>}
-        </Link>
+        </button>
       </div>
     </aside>
   );
