@@ -16,6 +16,7 @@
 - [x] Expense Model
 - [x] User Model
 - [x] Role Model
+- [x] Schemas
 
 ## Pending
 
